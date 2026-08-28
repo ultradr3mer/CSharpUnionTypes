@@ -14,6 +14,13 @@
     <ProjectReference Include="..\UnionTypes.Transpiler\UnionTypes.Transpiler.csproj" />
   </ItemGroup>
 
+  <!-- DiagnosticSuppressor: suppresses IDE squiggles on `|` in Source/ files -->
+  <ItemGroup>
+    <ProjectReference Include="..\UnionTypes.DiagnosticSuppressor\UnionTypes.DiagnosticSuppressor.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
   <!-- Union-syntax source lives in Source/. The MSBuild target runs the
        transpiler before CoreCompile and swaps in the generated files. -->
   <Import Project="..\UnionTypes.Transpiler\build\UnionTypes.Transpiler.targets" />
