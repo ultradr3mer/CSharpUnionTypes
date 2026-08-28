@@ -15,6 +15,13 @@ global::UnionTypes.Union<string, int> value = GetValue();
 Der Transpiler erweitert **nicht** den C#-Compiler. Er läuft als Source-to-Source-Transform
 vor `dotnet build` und erzeugt normale `.cs`-Dateien. Originaldateien werden nie verändert.
 
+Unterstützt werden **bis zu vier Varianten**:
+
+```csharp
+string | int | bool | Guid value = GetValue();
+// → global::UnionTypes.Union<string, int, bool, Guid> value = GetValue();
+```
+
 ---
 
 ## Inhaltsverzeichnis
@@ -24,9 +31,11 @@ vor `dotnet build` und erzeugt normale `.cs`-Dateien. Originaldateien werden nie
 - [Installation](#installation)
 - [MSBuild-Integration](#msbuild-integration)
 - [IDE-Integration (Code-Fixes)](#ide-integration-code-fixes)
+- [VS Code-Integration (Native Feel)](#vs-code-integration-native-feel)
 - [CLI-Verwendung](#cli-verwendung)
-- [Runtime-API: `Union<T1, T2>`](#runtime-api-uniont1-t2)
-- [Unterstützte Syntax (Phase 1)](#unterstützte-syntax-phase-1)
+- [Runtime-API](#runtime-api)
+- [Pattern Matching & Deconstruct](#pattern-matching--deconstruct)
+- [Unterstützte Syntax](#unterstützte-syntax)
 - [Kontextsensitivität](#kontextsensitivität)
 - [Diagnosen](#diagnosen)
 - [Bekannte Einschränkungen](#bekannte-einschränkungen)
@@ -38,25 +47,29 @@ vor `dotnet build` und erzeugt normale `.cs`-Dateien. Originaldateien werden nie
 
 | Projekt | Typ | Zweck |
 |---|---|---|
-| `UnionTypes.Runtime` | Class library | `Union<T1, T2>` discriminated union |
+| `UnionTypes.Runtime` | Class library | `Union<T1,T2>`, `Union<T1,T2,T3>`, `Union<T1,T2,T3,T4>` |
 | `UnionTypes.Transpiler` | Console app | CLI-Transpiler + MSBuild-Targets |
 | `UnionTypes.CodeFixes` | Roslyn analyzer | IDE-Glühbirne: `Union<X,Y>` ↔ `X \| Y` |
-| `UnionTypes.Runtime.Tests` | xUnit | Tests für die Union-Runtime |
-| `UnionTypes.Transpiler.Tests` | xUnit | Transformations-, CLI- und Integrationstests |
-| `UnionTypes.CodeFixes.Tests` | xUnit | Analyzer- und CodeFix-Tests |
+| `UnionTypes.Generators` | Source generator | `Deconstruct`-Methoden für Pattern Matching |
+| `UnionTypes.Runtime.Tests` | xUnit | 34 Tests für die Union-Runtime |
+| `UnionTypes.Transpiler.Tests` | xUnit | 26 Tests (inkl. dotnet-build-Integration) |
+| `UnionTypes.CodeFixes.Tests` | xUnit | 7 Analyzer- und CodeFix-Tests |
+| `UnionTypes.Generators.Tests` | xUnit | 5 Source-Generator-Tests |
 | `BasicSample` | Console app | Beispielprojekt mit Union-Syntax |
 | `vscode-extension` | VS Code Extension | Syntax-Highlighting für `\|` in Typ-Position |
 
 ```text
-src/  UnionTypes.Runtime/         — Union<T1,T2> struct
+src/  UnionTypes.Runtime/         — Union<T1,T2> / <T1,T2,T3> / <T1,T2,T3,T4>
       UnionTypes.Transpiler/      — CLI + Token-basierter Parser
       UnionTypes.CodeFixes/       — Roslyn DiagnosticAnalyzer + CodeFixProvider
+      UnionTypes.Generators/      — IIncrementalGenerator (Deconstruct)
       UnionTypes.Transpiler/build/ — UnionTypes.Transpiler.targets (MSBuild)
-tests/UnionTypes.Runtime.Tests/   — 18 Tests
-      UnionTypes.Transpiler.Tests/— 23 Tests (inkl. dotnet-build-Integration)
+tests/UnionTypes.Runtime.Tests/   — 34 Tests
+      UnionTypes.Transpiler.Tests/— 26 Tests (inkl. dotnet-build-Integration)
       UnionTypes.CodeFixes.Tests/ —  7 Tests
+      UnionTypes.Generators.Tests/—  5 Tests
 samples/BasicSample/Source/       — Union-Syntax-Quellcode (NICHT gültiges C#)
-        BasicSample/BasicSample.csproj — referenziert Runtime + Transpiler + CodeFixes
+        BasicSample/BasicSample.csproj — referenziert Runtime + Transpiler + CodeFixes + Generator
 ```
 
 ```bash
@@ -71,7 +84,7 @@ dotnet test  UnionTypes.slnx
 1. **Repository klonen und bauen:**
 
    ```bash
-   git clone <repo>
+   git clone https://github.com/ultradr3mer/CSharpUnionTypes.git
    cd CSharpUnionTypes
    dotnet build UnionTypes.slnx
    ```
@@ -89,6 +102,12 @@ dotnet test  UnionTypes.slnx
    i:42
    ExampleFunction.NonZeroEnumerable(new int[] { -1, 0, 1, 2, 3 }): 1, 2, 3
    ExampleFunction.NonZeroEnumerable(1): 1
+   Describe3("test"): string: test
+   Describe3(42): int: 42
+   Describe3(true): bool: True
+   Describe4(3.14): double: 3.14
+   Deconstruct value: s=, i=42
+   Deconstruct multi: s3=, i3=0, b3=True
    ```
 
 3. **Union-Syntax ausprobieren** — `BasicSample/Source/ExampleFunction.cs` bearbeiten:
@@ -101,16 +120,25 @@ dotnet test  UnionTypes.slnx
            i => new int[] { i });
        return normalized.Where(item => item > 0);
    }
+
+   public static string Describe3(string | int | bool input)
+   {
+       return input.Match(
+           s => $"string: {s}",
+           i => $"int: {i}",
+           b => $"bool: {b}");
+   }
    ```
 
    Beim nächsten `dotnet build` wandelt der Transpiler `IEnumerable<int> | int` in
-   `global::UnionTypes.Union<IEnumerable<int>, int>` um.
+   `global::UnionTypes.Union<IEnumerable<int>, int>` um und `string | int | bool` in
+   `global::UnionTypes.Union<string, int, bool>`.
 
 ---
 
 ## Installation
 
-In einem konsumierenden Projekt drei Referenzen setzen und die MSBuild-Targets importieren:
+In einem konsumierenden Projekt vier Referenzen setzen und die MSBuild-Targets importieren:
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
@@ -123,6 +151,9 @@ In einem konsumierenden Projekt drei Referenzen setzen und die MSBuild-Targets i
     <ProjectReference Include="..\UnionTypes.Runtime\UnionTypes.Runtime.csproj" />
     <ProjectReference Include="..\UnionTypes.Transpiler\UnionTypes.Transpiler.csproj" />
     <ProjectReference Include="..\UnionTypes.CodeFixes\UnionTypes.CodeFixes.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\UnionTypes.Generators\UnionTypes.Generators.csproj"
                       OutputItemType="Analyzer"
                       ReferenceOutputAssembly="false" />
   </ItemGroup>
@@ -280,22 +311,42 @@ dotnet run --project UnionTypes.Transpiler -- \
 
 ---
 
-## Runtime-API: `Union<T1, T2>`
+## Runtime-API
+
+Es gibt drei Union-Typen mit 2, 3 und 4 Varianten:
+
+| Typ | Varianten |
+|---|---|
+| `Union<T1, T2>` | 2 |
+| `Union<T1, T2, T3>` | 3 |
+| `Union<T1, T2, T3, T4>` | 4 |
+
+Alle bieten dieselbe API: `IsTN`, `TryGetTN`, `Match`, `Switch`, implizite Operatoren,
+`IEquatable`, `ToString`.
 
 ```csharp
 using UnionTypes;
 
+// 2-Variant
 Union<string, int> u = "hello";
-
-// Variante prüfen
 if (u.IsT1) { /* ... */ }
 if (u.TryGetT2(out var i)) { /* ... */ }
-
-// Musterverarbeitung
 string label = u.Match(s => $"s:{s}", n => $"n:{n}");
 
-// Seiteneffekte
-u.Switch(s => Console.WriteLine(s), n => Console.WriteLine(n));
+// 3-Variant
+Union<string, int, bool> u3 = 42;
+string label3 = u3.Match(
+    s => $"string:{s}",
+    i => $"int:{i}",
+    b => $"bool:{b}");
+
+// 4-Variant
+Union<string, int, bool, double> u4 = 3.14;
+u4.Switch(
+    s => Console.WriteLine(s),
+    i => Console.WriteLine(i),
+    b => Console.WriteLine(b),
+    d => Console.WriteLine(d));
 ```
 
 ### Null-Handling
@@ -309,17 +360,20 @@ Union<string?, int> u = (string?)null;   // IsT1 == true, Wert ist null
 
 ### Implizite Konvertierungen
 
-Beide Varianten haben implizite Operatoren:
+Alle Varianten haben implizite Operatoren:
 
 ```csharp
 Union<string, int> a = "hello";   // → T1
 Union<string, int> b = 42;        // → T2
+
+Union<string, int, bool> c = true; // → T3
 ```
 
 ### Identische Typen
 
 `Union<T, T>` wirft bei der statischen Initialisierung eine `InvalidOperationException`
-und wird vom Transpiler mit `UT004` abgelehnt.
+und wird vom Transpiler mit `UT004` abgelehnt. Gleiches gilt für `Union<T1, T2, T3>`
+wenn zwei Typen identisch sind.
 
 ### Überlappende Typen
 
@@ -329,7 +383,37 @@ Operatoren bevorzugen `T2`.
 
 ---
 
-## Unterstützte Syntax (Phase 1
+## Pattern Matching & Deconstruct
+
+Der `UnionTypes.Generators`-Source-Generator erzeugt automatisch `Deconstruct`-
+Extension-Methods für jede `Union<T1,...,TN>`-Instanziierung im Code. Dadurch
+wird C#-Deconstruction und Positions-Pattern-Matching möglich:
+
+```csharp
+using UnionTypes;
+
+Union<string, int> u = 42;
+
+// Deconstruction
+var (s, i) = u;
+// s == null (T1 nicht aktiv), i == 42 (T2 aktiv)
+
+// 3-Variant Deconstruction
+Union<string, int, bool> u3 = true;
+var (s3, i3, b3) = u3;
+// s3 == null, i3 == 0, b3 == true
+```
+
+Der Generator:
+- Scant alle `Union<T1,...,TN>`-Verwendungen im Compilation
+- Generiert `Deconstruct(this Union<...>, out T1? t1, out T2? t2, ...)`
+- Dedupliziert gleiche Instantiierungen
+- Unbound generics (`typeof(Union<,>)`) werden übersprungen
+- Generiert in `namespace UnionTypes` (über `using UnionTypes;` verfügbar)
+
+---
+
+## Unterstützte Syntax
 
 Union-Typen werden an den folgenden Typ-Positionen erkannt:
 
@@ -356,11 +440,13 @@ List<string | int> values;
 ### Unterstützte Typ-Varianten
 
 ```csharp
-string | int value;                                    // einfache Typen
+string | int value;                                    // 2 Varianten
 string | int? value;                                  // Nullable
 List<string> | Dictionary<string, int> value;         // verschachtelte Generics
 (string Name, int Age) | Guid value;                  // Tuple-Typen
 IEnumerable<int> | int input;                         // generischer + einfacher Typ
+string | int | bool value;                             // 3 Varianten
+string | int | bool | Guid value;                      // 4 Varianten
 ```
 
 ### Generierter Output
@@ -370,6 +456,8 @@ Der generierte Code ist vollqualifiziert, um `using`-Konflikte zu vermeiden:
 ```csharp
 global::UnionTypes.Union<string, int> value;
 global::UnionTypes.Union<IEnumerable<int>, int> input;
+global::UnionTypes.Union<string, int, bool> multi;
+global::UnionTypes.Union<string, int, bool, Guid> multi4;
 ```
 
 ---
@@ -398,7 +486,7 @@ Fehlermeldungen enthalten Dateiname, Zeile und Spalte:
 
 | Code | Bedeutung |
 |---|---|
-| `UT001` | Mehr als zwei Union-Varianten noch nicht unterstützt. |
+| `UT001` | Mehr als vier Union-Varianten noch nicht unterstützt. |
 | `UT002` | Union-Typ an dieser Position nicht unterstützt. |
 | `UT003` | Ungültige oder nicht parsebare Union-Type-Syntax. |
 | `UT004` | Identische Union-Mitglieder nicht unterstützt. |
@@ -407,24 +495,25 @@ Fehlermeldungen enthalten Dateiname, Zeile und Spalte:
 Beispiel:
 
 ```
-Sample.cs(12,18): error UT001: Union Types mit mehr als zwei Varianten werden noch nicht unterstützt:
-string | int | Guid
+Sample.cs(12,18): error UT001: Union Types mit mehr als vier Varianten werden noch nicht unterstützt:
+string | int | Guid | bool | double
 ```
 
 ---
 
 ## Bekannte Einschränkungen
 
-- Maximal **zwei** Union-Varianten (`A | B | C` → `UT001`).
-- Keine Union-Ausdrücke, kein automatisches Dispatch, keine generierten Switch-Ausdrücke.
-- Keine Pattern-Matching-Union-Semantik (`input is int` funktioniert nicht — `IsT1`/`Match` verwenden).
+- Maximal **vier** Union-Varianten (`A | B | C | D | E` → `UT001`).
+- Keine Union-Ausdrücke, kein automatisches Dispatch.
+- `input is int` funktioniert nicht (C# `is` prüft Runtime-Typ, nicht Variant-Tag) — `IsT1`/`Match`/`TryGetTN` verwenden.
+- `var (s, i) = u;` (Deconstruct) liefert alle Varianten als nullable; die inaktiven sind `null`/`default`. Der aktive Variant muss über `IsTN` geprüft werden.
 - Keine `using`-Aliase (`using Value = string | int;`).
 - Keine Arrays, Pointer, ref structs oder Function Pointer innerhalb von Unions (`UT005`).
 - Keine Methodenüberladungs-Permutationen.
 - Identische Variant-Typen (`Union<T, T>`) werden abgelehnt.
 - Überlappende Typen (`Union<object, string>`) kompilieren, sind aber ggf. mehrdeutig.
-- Die `|`-Syntax ist kein gültiges C# — die IDE zeigt rote Wellenlinien.
-  Die Glühbirne (CodeFix) bietet jedoch sofort die Konvertierung an.
+- Die `|`-Syntax ist kein gültiges C# — die IDE zeigt Wellenlinien.
+  Die Glühbirne (CodeFix) und `.editorconfig` mildern dies ab (siehe [VS Code-Integration](#vs-code-integration-native-feel)).
 
 ---
 
@@ -435,7 +524,8 @@ string | int | Guid
 Der Transpiler verwendet Roslyns `SyntaxFactory.ParseTokens`, um den Source zu
 tokenisieren. Ein rekursiver Parser wandert den Token-Stream an bekannten
 Typ-Start-Positionen ab, parst Typ-Syntax (qualifizierte Namen, Generics, Tuples,
-Nullable) und schreibt `Type | Type` in `global::NS.Union<Type, Type>` um.
+Nullable) und sammelt alle `Type | Type | ...` Varianten. Bei 2-4 Varianten wird
+`global::NS.Union<T1, ..., TN>` generiert, bei >4 Varianten `UT001`.
 
 Kommentare, String- und Char-Literale werden nie verändert — Roslyns Token-Kinds
 machen die Unterscheidung trivial.
@@ -457,11 +547,19 @@ Ein `DiagnosticAnalyzer` (Severity `Hidden` + `Unnecessary`) erkennt
 - `CS1003`/`CS1519` → lokalisiert das `|`-Token, parst linke/rechte Typen
   aus dem Token-Stream und ersetzt durch `global::UnionTypes.Union<T1, T2>`.
 
+### Source Generator (`UnionTypes.Generators`)
+
+Ein `IIncrementalGenerator` scannt das Compilation nach `GenericNameSyntax` mit
+Name "Union" und 2-4 Typ-Argumenten, bestätigt via SemanticModel dass es
+`UnionTypes.Union` ist, und generiert `Deconstruct`-Extension-Methods in
+`namespace UnionTypes`. Dies ermöglicht `var (s, i) = unionValue;`.
+
 ### Runtime (`UnionTypes.Runtime`)
 
-`Union<T1, T2>` ist ein `readonly struct` mit `object? _value` + `byte _tag`.
-Der Tag (0=uninitialisiert, 1=T1, 2=T2) ermöglicht korrekte `null`-Behandlung
-ohne `dynamic`. Implementiert `IEquatable<Union<T1,T2>>`.
+Drei `readonly struct`-Typen mit `object? _value` + `byte _tag`.
+Der Tag (0=uninitialisiert, 1..N=T1..TN) ermöglicht korrekte `null`-Behandlung
+ohne `dynamic`. Alle implementieren `IEquatable` und bieten `IsTN`/`TryGetTN`/
+`Match`/`Switch`/implizite Operatoren.
 
 ---
 
