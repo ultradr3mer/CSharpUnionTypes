@@ -1,0 +1,72 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <!--
+    Union Types MSBuild integration.
+
+    When <UnionTypesEnabled>true</UnionTypesEnabled> is set, this target:
+      1. Runs the UnionTypes.Transpiler on union-syntax source files before CoreCompile.
+      2. Removes the original union-syntax files from the Compile item group.
+      3. Adds the generated files from obj/UnionTranspiler/ to Compile.
+      4. Respects incremental builds via Inputs/Outputs.
+
+    In the consuming project:
+      <PropertyGroup>
+        <UnionTypesEnabled>true</UnionTypesEnabled>
+      </PropertyGroup>
+      <ItemGroup>
+        <ProjectReference Include="..\UnionTypes.Runtime\UnionTypes.Runtime.csproj" />
+        <ProjectReference Include="..\UnionTypes.Transpiler\UnionTypes.Transpiler.csproj" />
+      </ItemGroup>
+      <Import Project="..\UnionTypes.Transpiler\build\UnionTypes.Transpiler.targets" />
+
+    Union-syntax source files live under Source/ by default.
+  -->
+
+  <PropertyGroup>
+    <UnionTypesSourceGlob Condition="'$(UnionTypesSourceGlob)' == ''">Source\**\*.cs</UnionTypesSourceGlob>
+    <UnionTypesSourceRoot Condition="'$(UnionTypesSourceRoot)' == ''">$(MSBuildProjectDirectory)\Source</UnionTypesSourceRoot>
+    <UnionTypesOutputDir Condition="'$(UnionTypesOutputDir)' == ''">$(MSBuildProjectDirectory)\obj\UnionTranspiler</UnionTypesOutputDir>
+    <_UnionTypesTargetsDir>$(MSBuildThisFileDirectory)</_UnionTypesTargetsDir>
+    <_UnionTypesTranspilerProject Condition="'$(_UnionTypesTranspilerProject)' == ''">$(_UnionTypesTargetsDir)..\UnionTypes.Transpiler.csproj</_UnionTypesTranspilerProject>
+  </PropertyGroup>
+
+  <!-- Collect union-syntax source files for incremental tracking. -->
+  <ItemGroup>
+    <UnionTypesSourceFile Include="$(UnionTypesSourceGlob)" />
+  </ItemGroup>
+
+  <!--
+    The transform target. Runs the transpiler over the union-syntax source files,
+    emitting generated C# into $(UnionTypesOutputDir). Incremental via Inputs/Outputs.
+  -->
+  <Target Name="UnionTypesTransform"
+          BeforeTargets="CoreCompile"
+          Inputs="@(UnionTypesSourceFile)"
+          Outputs="$(UnionTypesOutputDir).stamp">
+    <PropertyGroup>
+      <_UnionTypesRuntimeArg Condition="'$(UnionTypesRuntimeNamespace)' != ''">--runtime-namespace $(UnionTypesRuntimeNamespace)</_UnionTypesRuntimeArg>
+    </PropertyGroup>
+
+    <MakeDir Directories="$(UnionTypesOutputDir)" />
+
+    <Exec Command="dotnet run --project &quot;$(_UnionTypesTranspilerProject)&quot; --no-build -- --input &quot;$(UnionTypesSourceRoot)&quot; --output &quot;$(UnionTypesOutputDir)&quot; --runtime-namespace UnionTypes $(_UnionTypesRuntimeArg)"
+          ConsoleToMSBuild="true" />
+
+    <Touch Files="$(UnionTypesOutputDir).stamp" AlwaysCreate="true" />
+  </Target>
+
+  <!--
+    After transform, remove the original union-syntax files from Compile and
+    add the generated files instead.
+  -->
+  <Target Name="UnionTypesSwapCompileItems"
+          AfterTargets="UnionTypesTransform"
+          BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <Compile Remove="$(UnionTypesSourceGlob)" />
+      <UnionTypesGeneratedFile Include="$(UnionTypesOutputDir)\**\*.cs" />
+      <Compile Include="@(UnionTypesGeneratedFile)" />
+    </ItemGroup>
+  </Target>
+
+</Project>

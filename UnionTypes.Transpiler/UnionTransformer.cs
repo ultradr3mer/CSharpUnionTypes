@@ -179,7 +179,10 @@ public static class UnionTransformer
                 }
 
                 var parse = ParseTypeOrUnion(tokens, i, filePath, unionTypeName);
-                if (parse.IsError && parse.Error is not null)
+                // Only report diagnostics when a union (|) is actually involved.
+                // Non-union types with unsupported constructs (e.g. `new int[]`)
+                // are not our business — pass them through unchanged.
+                if (parse.IsError && parse.Error is not null && parse.HasUnion)
                 {
                     diagnostics.Add(parse.Error);
                     i = parse.End > i ? parse.End : i + 1;

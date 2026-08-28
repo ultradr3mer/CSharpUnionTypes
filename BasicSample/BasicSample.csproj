@@ -11,13 +11,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\UnionTypes.Runtime\UnionTypes.Runtime.csproj" />
+    <ProjectReference Include="..\UnionTypes.Transpiler\UnionTypes.Transpiler.csproj" />
   </ItemGroup>
 
-  <!-- Source/ contains union-syntax input for the transpiler, NOT valid C#.
-       Exclude it from compilation so the project builds and the IDE stays clean. -->
-  <ItemGroup>
-    <Compile Remove="Source\**\*.cs" />
-    <None Include="Source\**\*.cs" />
-  </ItemGroup>
+  <!-- Union-syntax source lives in Source/. The MSBuild target runs the
+       transpiler before CoreCompile and swaps in the generated files. -->
+  <Import Project="..\UnionTypes.Transpiler\build\UnionTypes.Transpiler.targets" />
 
 </Project>

@@ -1,10 +1,3 @@
-// This is union-syntax SOURCE for the transpiler (NOT valid C#).
-// Run the transpiler to produce compilable output:
-//
-//   dotnet run --project ../../UnionTypes.Transpiler -- --input . --output ..
-//
-// Do not open this file expecting it to compile in the IDE.
-
 using UnionTypes;
 using BasicSample;
 
@@ -15,3 +8,9 @@ Console.WriteLine(example.Describe());
 
 var result = value.Match(s => $"s:{s}", i => $"i:{i}");
 Console.WriteLine(result);
+
+var nonZeroEnumerable = ExampleFunction.NonZeroEnumerable(new int[] { -1, 0, 1, 2, 3 });
+Console.WriteLine($"ExampleFunction.NonZeroEnumerable(new int[] {{ -1, 0, 1, 2, 3 }}): {string.Join(", ", nonZeroEnumerable)}");
+
+var nonZeroInt1 = ExampleFunction.NonZeroEnumerable(1);
+Console.WriteLine($"ExampleFunction.NonZeroEnumerable(1): {string.Join(", ", nonZeroInt1)}");

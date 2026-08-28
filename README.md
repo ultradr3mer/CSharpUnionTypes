@@ -36,22 +36,38 @@ dotnet test UnionTypes.slnx
 
 ## Installation
 
-Reference the runtime in the project that consumes the generated code:
+Reference both the runtime and the transpiler, then import the MSBuild targets:
 
 ```xml
+<PropertyGroup>
+  <UnionTypesEnabled>true</UnionTypesEnabled>
+</PropertyGroup>
+
 <ItemGroup>
-  <ProjectReference Include="..\src\UnionTypes.Runtime\UnionTypes.Runtime.csproj" />
+  <ProjectReference Include="..\UnionTypes.Runtime\UnionTypes.Runtime.csproj" />
+  <ProjectReference Include="..\UnionTypes.Transpiler\UnionTypes.Transpiler.csproj" />
 </ItemGroup>
+
+<Import Project="..\UnionTypes.Transpiler\build\UnionTypes.Transpiler.targets" />
 ```
 
-There is no MSBuild integration in Phase 1 — invoke the transpiler CLI explicitly before
-building (see below).
+With this in place, `dotnet build` automatically:
+
+1. Runs the transpiler on `Source/**/*.cs` before `CoreCompile`.
+2. Removes the union-syntax source files from compilation.
+3. Adds the generated files from `obj/UnionTranspiler/` to compilation.
+4. Skips the transpiler on incremental builds (no source changes = no re-run).
+
+Put your union-syntax `.cs` files in a `Source/` subfolder. The generated output
+goes to `obj/UnionTranspiler/` and is compiled automatically — no manual steps.
 
 ## CLI usage
 
+The transpiler can also be invoked directly:
+
 ```bash
-dotnet run --project src/UnionTypes.Transpiler -- \
-  --input samples/BasicSample \
+dotnet run --project UnionTypes.Transpiler -- \
+  --input samples/BasicSample/Source \
   --output samples/BasicSample/obj/UnionTranspiler
 ```
 
@@ -177,7 +193,6 @@ string | int | Guid
 - No pattern-matching union semantics, no `using` aliases.
 - No arrays, pointers, ref structs, or function pointers inside unions (`UT005`).
 - No method-overload permutations.
-- No MSBuild integration yet (invoke the CLI manually before building).
 - Identical variant types (`Union<T, T>`) are rejected.
 - Overlapping types (e.g. `Union<object, string>`) compile but may be ambiguous.
 
