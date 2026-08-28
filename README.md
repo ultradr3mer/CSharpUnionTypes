@@ -22,10 +22,12 @@ backed by a Roslyn token stream and a small type-syntax parser.
 | Project | Type | Purpose |
 |---|---|---|
 | `UnionTypes.Runtime` | Class library | `Union<T1, T2>` discriminated union + future runtime APIs |
-| `UnionTypes.Transpiler` | Console app | CLI preprocessor/transpiler |
+| `UnionTypes.Transpiler` | Console app | CLI preprocessor/transpiler + MSBuild targets |
+| `UnionTypes.CodeFixes` | Roslyn analyzer | IDE lightbulb: `Union<X,Y>` <-> `X | Y` |
 | `UnionTypes.Runtime.Tests` | xUnit | Tests for the union runtime |
 | `UnionTypes.Transpiler.Tests` | xUnit | Transformation + CLI + integration tests |
-| `BasicSample` | Console app | Manual sample using union syntax |
+| `UnionTypes.CodeFixes.Tests` | xUnit | Analyzer + code-fix tests |
+| `BasicSample` | Console app | Sample using union syntax with MSBuild integration |
 
 Open `UnionTypes.slnx` or build from the command line:
 
@@ -36,7 +38,7 @@ dotnet test UnionTypes.slnx
 
 ## Installation
 
-Reference both the runtime and the transpiler, then import the MSBuild targets:
+Reference the runtime, transpiler, and code-fix analyzer, then import the MSBuild targets:
 
 ```xml
 <PropertyGroup>
@@ -46,6 +48,9 @@ Reference both the runtime and the transpiler, then import the MSBuild targets:
 <ItemGroup>
   <ProjectReference Include="..\UnionTypes.Runtime\UnionTypes.Runtime.csproj" />
   <ProjectReference Include="..\UnionTypes.Transpiler\UnionTypes.Transpiler.csproj" />
+  <ProjectReference Include="..\UnionTypes.CodeFixes\UnionTypes.CodeFixes.csproj"
+                    OutputItemType="Analyzer"
+                    ReferenceOutputAssembly="false" />
 </ItemGroup>
 
 <Import Project="..\UnionTypes.Transpiler\build\UnionTypes.Transpiler.targets" />
@@ -60,6 +65,20 @@ With this in place, `dotnet build` automatically:
 
 Put your union-syntax `.cs` files in a `Source/` subfolder. The generated output
 goes to `obj/UnionTranspiler/` and is compiled automatically — no manual steps.
+
+## IDE Integration (Code-Fixes)
+
+The `UnionTypes.CodeFixes` Roslyn analyzer provides two lightbulb actions:
+
+1. **Union → Pipe**: When you write `Union<T1, T2>` in a `Source/` file, the
+   lightbulb offers to rewrite it as `T1 | T2` (the union-type syntax).
+2. **Pipe → Union**: When the compiler reports a syntax error (`CS1003`/`CS1519`)
+   near a `|` in a type position, the lightbulb offers to replace it with
+   `global::UnionTypes.Union<T1, T2>`.
+
+This works in **both Visual Studio and VS Code** (via Roslyn analyzer reference).
+The analyzer only fires in files under a `Source/` directory — normal C# files
+are never affected.
 
 ## CLI usage
 

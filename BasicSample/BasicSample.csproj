@@ -14,9 +14,9 @@
     <ProjectReference Include="..\UnionTypes.Transpiler\UnionTypes.Transpiler.csproj" />
   </ItemGroup>
 
-  <!-- DiagnosticSuppressor: suppresses IDE squiggles on `|` in Source/ files -->
+  <!-- CodeFixes: offers lightbulb to rewrite Union<T1,T2> <-> T1 | T2 -->
   <ItemGroup>
-    <ProjectReference Include="..\UnionTypes.DiagnosticSuppressor\UnionTypes.DiagnosticSuppressor.csproj"
+    <ProjectReference Include="..\UnionTypes.CodeFixes\UnionTypes.CodeFixes.csproj"
                       OutputItemType="Analyzer"
                       ReferenceOutputAssembly="false" />
   </ItemGroup>

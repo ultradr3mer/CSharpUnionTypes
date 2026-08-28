@@ -6,14 +6,15 @@
     <LangVersion>latest</LangVersion>
     <IsRoslynComponent>true</IsRoslynComponent>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <AssemblyName>UnionTypes.DiagnosticSuppressor</AssemblyName>
-    <RootNamespace>UnionTypes.DiagnosticSuppressor</RootNamespace>
-    <NoWarn>RS1034</NoWarn>
+    <AssemblyName>UnionTypes.CodeFixes</AssemblyName>
+    <RootNamespace>UnionTypes.CodeFixes</RootNamespace>
+    <NoWarn>RS1034;CS1591</NoWarn>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.14.0" PrivateAssets="all" />
   </ItemGroup>
 
 </Project>
