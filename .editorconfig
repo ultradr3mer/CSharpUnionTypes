@@ -1,0 +1,11 @@
+# EditorConfig for Union Types source files
+# Softens compiler syntax errors (CS1003/CS1519/CS1001/CS1002) that arise
+# from the `|` union-type syntax in Source/ files. Instead of red error
+# squiggles, they appear as green suggestions — the transpiler handles
+# them at build time.
+
+[Source/**.cs]
+dotnet_diagnostic.CS1003.severity = suggestion
+dotnet_diagnostic.CS1519.severity = suggestion
+dotnet_diagnostic.CS1001.severity = suggestion
+dotnet_diagnostic.CS1002.severity = suggestion

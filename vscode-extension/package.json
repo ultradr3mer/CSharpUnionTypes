@@ -1,0 +1,48 @@
+{
+    "name": "union-types",
+    "displayName": "Union Types for C#",
+    "description": "Syntax highlighting for `T1 | T2` union-type syntax in C# Source/ files.",
+    "version": "0.0.1",
+    "publisher": "uniontypes",
+    "engines": {
+        "vscode": "^1.85.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "activationEvents": [
+        "onLanguage:csharp"
+    ],
+    "main": "./out/extension.js",
+    "contributes": {
+        "semanticTokenTypes": [
+            {
+                "id": "unionOperator",
+                "superType": "operator",
+                "description": "The `|` operator in union-type syntax (e.g. `string | int`)."
+            }
+        ],
+        "configurationDefaults": {
+            "[csharp]": {
+                "editor.semanticTokenColorCustomizations": {
+                    "rules": {
+                        "unionOperator": {
+                            "foreground": "#C586C0",
+                            "fontStyle": "bold"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "scripts": {
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./",
+        "package": "vsce package"
+    },
+    "devDependencies": {
+        "@types/vscode": "^1.85.0",
+        "@types/node": "^20.0.0",
+        "typescript": "^5.3.0"
+    }
+}

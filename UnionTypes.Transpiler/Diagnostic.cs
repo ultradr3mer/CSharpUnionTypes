@@ -13,7 +13,7 @@ public static class DiagnosticCode
 
     public static string Describe(string code) => code switch
     {
-        UT001 => "Union Types mit mehr als zwei Varianten werden noch nicht unterstützt.",
+        UT001 => "Union Types mit mehr als vier Varianten werden noch nicht unterstützt.",
         UT002 => "Union Type an dieser Position nicht unterstützt.",
         UT003 => "Ungültige oder nicht parsebare Union-Type-Syntax.",
         UT004 => "Identische Union-Mitglieder nicht unterstützt.",

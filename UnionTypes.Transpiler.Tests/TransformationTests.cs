@@ -160,13 +160,35 @@ public class TransformationTests
     // --- Error cases ---
 
     [Fact]
-    public void ThreeVariants_ProducesUT001Diagnostic()
+    public void ThreeVariants_Transforms_To_Union3()
     {
         var src = "string | int | Guid value;";
+        Assert.Equal("global::UnionTypes.Union<string, int, Guid> value;", Transform(src));
+    }
+
+    [Fact]
+    public void FourVariants_Transforms_To_Union4()
+    {
+        var src = "string | int | Guid | bool value;";
+        Assert.Equal("global::UnionTypes.Union<string, int, Guid, bool> value;", Transform(src));
+    }
+
+    [Fact]
+    public void FiveVariants_ProducesUT001Diagnostic()
+    {
+        var src = "string | int | Guid | bool | double value;";
         var (output, diagnostics) = TestHarness.TransformWithDiagnostics(src);
         Assert.Single(diagnostics);
         Assert.Equal("UT001", diagnostics[0].Code);
-        Assert.Contains("string | int | Guid", diagnostics[0].Message);
+    }
+
+    [Fact]
+    public void ThreeVariants_IdenticalMembers_ProducesUT004Diagnostic()
+    {
+        var src = "string | int | string value;";
+        var (output, diagnostics) = TestHarness.TransformWithDiagnostics(src);
+        Assert.Single(diagnostics);
+        Assert.Equal("UT004", diagnostics[0].Code);
     }
 
     [Fact]

@@ -1,0 +1,13 @@
+{
+    "editor.codeActionsOnSave": {
+        "source.unionTypes.pipeToUnion": "explicit"
+    },
+    "[csharp]": {
+        "editor.formatOnSave": false,
+        "editor.defaultFormatter": null
+    },
+    "files.associations": {
+        "*.cs": "csharp"
+    },
+    "dotnet.defaultSolution": "UnionTypes.slnx"
+}

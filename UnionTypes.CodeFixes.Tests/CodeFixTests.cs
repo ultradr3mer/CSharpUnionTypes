@@ -26,15 +26,17 @@ public class CodeFixTests
             .AddMetadataReference(projectId, MetadataReference.CreateFromFile(typeof(Union<,>).Assembly.Location));
 
         var project = solution.GetProject(projectId)!
-            .WithCompilationOptions(new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+            .WithCompilationOptions(new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary))
+            .WithParseOptions(new CSharpParseOptions(LanguageVersion.Latest));
 
         var sourceText = SourceText.From(source);
         var docId = DocumentId.CreateNewId(projectId, filePath);
         solution = solution.AddDocument(docId, filePath, sourceText, filePath: filePath);
         var doc = solution.GetDocument(docId)!;
 
-        var compilation = await project.GetCompilationAsync();
-        var diagnostics = compilation!.GetDiagnostics().ToList();
+        // Get syntax tree diagnostics (includes lexer/parser errors like CS1003, CS1519).
+        var syntaxTree = await doc.GetSyntaxTreeAsync();
+        var diagnostics = syntaxTree.GetDiagnostics().ToList();
 
         // Also run our analyzer.
         var analyzer = new UnionTypeSyntaxAnalyzer();
@@ -223,6 +225,48 @@ public class CodeFixTests
         var newDoc = await ApplyCodeActionAsync(doc, codeAction!);
         var newSource = await newDoc.GetTextAsync();
         Assert.Contains("IEnumerable<int> | int", newSource.ToString());
+    }
+
+    [Fact]
+    public async Task CodeFix_PipeToUnion_ParameterWithGenericLeftType()
+    {
+        // Reproduces the bug: IEnumerable<int> | int in a parameter position.
+        var source = """
+            using System.Collections.Generic;
+            namespace Demo
+            {
+                public static class C
+                {
+                    public static void M(IEnumerable<int> | int input) { }
+                }
+            }
+            """;
+
+        var (doc, diagnostics) = await CreateDocumentAsync(source, "Source/Example.cs");
+
+        // Find a CS1003 or CS1519 diagnostic near the `|`.
+        var pipeDiag = diagnostics.FirstOrDefault(d =>
+            (d.Id == "CS1003" || d.Id == "CS1519"));
+        Assert.NotNull(pipeDiag);
+
+        var codeFixProvider = new UnionTypeSyntaxCodeFixProvider();
+        var codeAction = await ApplyCodeFixAsync(doc, codeFixProvider, pipeDiag!);
+
+        Assert.NotNull(codeAction);
+
+        var newDoc = await ApplyCodeActionAsync(doc, codeAction!);
+        var newSource = await newDoc.GetTextAsync();
+        var newSourceStr = newSource.ToString();
+
+        Assert.Contains("Union<IEnumerable<int>, int>", newSourceStr);
+        Assert.DoesNotContain("|", newSourceStr);
+        // Must still have the parameter name and parens.
+        Assert.Contains("input", newSourceStr);
+        Assert.Contains("(", newSourceStr);
+        Assert.Contains(")", newSourceStr);
+        // Must not concatenate the method name with the union type.
+        Assert.DoesNotContain("Mglobal::", newSourceStr);
+        Assert.DoesNotContain("Union<(", newSourceStr);
     }
 
     private static async Task<CodeAction?> ApplyCodeFixAsync(

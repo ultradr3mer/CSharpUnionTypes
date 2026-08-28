@@ -326,12 +326,32 @@ public sealed class UnionTypeSyntaxCodeFixProvider : CodeFixProvider
             }
 
             // Opening < or ( decreases depth.
-            if (k == SyntaxKind.LessThanToken ||
-                k == SyntaxKind.OpenParenToken)
+            if (k == SyntaxKind.LessThanToken)
             {
                 if (depth == 0)
                 {
-                    // This < or ( starts the type (for generic or tuple).
+                    return i;
+                }
+                depth--;
+                continue;
+            }
+
+            if (k == SyntaxKind.OpenParenToken)
+            {
+                if (depth == 0)
+                {
+                    // Could be a tuple type start OR a method parameter list.
+                    // Check the token before '(': if it's an identifier or '>',
+                    // it's a method parameter list — the type starts AFTER '('.
+                    var prevKind = i > 0 ? tokens[i - 1].Kind() : SyntaxKind.None;
+                    if (prevKind == SyntaxKind.IdentifierToken ||
+                        prevKind == SyntaxKind.GreaterThanToken ||
+                        prevKind == SyntaxKind.GreaterThanGreaterThanToken ||
+                        prevKind == SyntaxKind.GreaterThanGreaterThanGreaterThanToken)
+                    {
+                        return i + 1;
+                    }
+                    // Otherwise it's a tuple type start.
                     return i;
                 }
                 depth--;
@@ -340,7 +360,6 @@ public sealed class UnionTypeSyntaxCodeFixProvider : CodeFixProvider
 
             if (depth > 0)
             {
-                // Inside generics or tuple, keep consuming.
                 continue;
             }
 
@@ -366,6 +385,7 @@ public sealed class UnionTypeSyntaxCodeFixProvider : CodeFixProvider
     {
         // Walk forwards from after the pipe to find the end of the right type.
         int depth = 0;
+        bool lastWasIdentifier = false;
         for (int i = pipeIdx + 1; i < tokens.Count; i++)
         {
             var k = tokens[i].Kind();
@@ -377,6 +397,7 @@ public sealed class UnionTypeSyntaxCodeFixProvider : CodeFixProvider
                 k == SyntaxKind.OpenParenToken)
             {
                 depth++;
+                lastWasIdentifier = false;
                 continue;
             }
 
@@ -388,17 +409,25 @@ public sealed class UnionTypeSyntaxCodeFixProvider : CodeFixProvider
             {
                 if (depth == 0)
                 {
-                    // A > at depth 0 could be "greater than" operator — stop.
                     return i - 1;
                 }
                 depth--;
+                lastWasIdentifier = false;
                 continue;
             }
 
             if (depth > 0)
             {
-                // Inside generics or tuple, keep consuming.
+                lastWasIdentifier = (k == SyntaxKind.IdentifierToken || IsPredefinedType(k));
                 continue;
+            }
+
+            // At depth 0: if we see an identifier and the previous token was also
+            // an identifier (without a dot between), the second one is a parameter
+            // name, not part of the type — stop.
+            if ((k == SyntaxKind.IdentifierToken || IsPredefinedType(k)) && lastWasIdentifier)
+            {
+                return i - 1;
             }
 
             // At depth 0, valid type tokens.
@@ -409,6 +438,9 @@ public sealed class UnionTypeSyntaxCodeFixProvider : CodeFixProvider
                 k == SyntaxKind.ColonColonToken ||
                 k == SyntaxKind.CommaToken)
             {
+                lastWasIdentifier = (k == SyntaxKind.IdentifierToken || IsPredefinedType(k));
+                if (k == SyntaxKind.DotToken || k == SyntaxKind.ColonColonToken)
+                    lastWasIdentifier = false;
                 continue;
             }
 

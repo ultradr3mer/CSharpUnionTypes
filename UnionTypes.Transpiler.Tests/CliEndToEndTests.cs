@@ -101,7 +101,7 @@ public class CliEndToEndTests : IDisposable
     {
         var input = Path.Combine(_root, "src");
         Directory.CreateDirectory(input);
-        File.WriteAllText(Path.Combine(input, "Bad.cs"), "string | int | Guid value;");
+        File.WriteAllText(Path.Combine(input, "Bad.cs"), "string | int | Guid | bool | double value;");
 
         var output = Path.Combine(_root, "out");
         var exit = RunTranspiler(input, output);

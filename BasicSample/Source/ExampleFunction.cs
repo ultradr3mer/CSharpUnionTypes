@@ -12,4 +12,21 @@ public static class ExampleFunction
 
 		return normalized.Where(item => item > 0);
 	}
+
+	public static string Describe3(string | int | bool input)
+	{
+		return input.Match(
+			s => $"string: {s}",
+			i => $"int: {i}",
+			b => $"bool: {b}");
+	}
+
+	public static string Describe4(string | int | bool | double input)
+	{
+		return input.Match(
+			s => $"string: {s}",
+			i => $"int: {i}",
+			b => $"bool: {b}",
+			d => $"double: {d}");
+	}
 }

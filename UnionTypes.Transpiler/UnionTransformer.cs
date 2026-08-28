@@ -280,63 +280,78 @@ public static class UnionTransformer
 
     private static TypeParse ParseTypeOrUnion(IReadOnlyList<SyntaxToken> tokens, int start, string filePath, string unionTypeName)
     {
-        var left = ParseType(tokens, start, filePath, unionTypeName);
-        if (left.IsError)
+        var first = ParseType(tokens, start, filePath, unionTypeName);
+        if (first.IsError)
         {
-            return left;
+            return first;
         }
 
-        int j = left.End;
-        if (j < tokens.Count && tokens[j].Kind() == SyntaxKind.BarToken)
+        // No `|` after first type → not a union.
+        int j = first.End;
+        if (j >= tokens.Count || tokens[j].Kind() != SyntaxKind.BarToken)
         {
-            var right = ParseType(tokens, j + 1, filePath, unionTypeName);
-            if (right.IsError)
+            return first;
+        }
+
+        // Collect all variants.
+        var variants = new List<string> { first.Text };
+        int end = first.End;
+
+        while (end < tokens.Count && tokens[end].Kind() == SyntaxKind.BarToken)
+        {
+            var next = ParseType(tokens, end + 1, filePath, unionTypeName);
+            if (next.IsError)
             {
-                return right;
+                return next;
             }
 
-            int k = right.End;
-            if (k < tokens.Count && tokens[k].Kind() == SyntaxKind.BarToken)
-            {
-                var (line, col) = ComputeLineCol(tokens, tokens[k].SpanStart);
-                return new TypeParse
-                {
-                    End = k + 1,
-                    Text = "",
-                    HasUnion = true,
-                    Error = new Diagnostic(
-                        DiagnosticCode.UT001, filePath, line, col,
-                        $"{DiagnosticCode.Describe(DiagnosticCode.UT001)}{Environment.NewLine}{ReconstructTokenText(tokens, start, k + 1)}"),
-                };
-            }
+            variants.Add(next.Text);
+            end = next.End;
+        }
 
-            string leftText = left.Text;
-            string rightText = right.Text;
-
-            if (Normalize(leftText) == Normalize(rightText))
-            {
-                var (line, col) = ComputeLineCol(tokens, tokens[j].SpanStart);
-                return new TypeParse
-                {
-                    End = right.End,
-                    Text = "",
-                    HasUnion = true,
-                    Error = new Diagnostic(
-                        DiagnosticCode.UT004, filePath, line, col,
-                        $"{DiagnosticCode.Describe(DiagnosticCode.UT004)}: {leftText} | {rightText}"),
-                };
-            }
-
-            string unionText = $"{unionTypeName}<{leftText}, {rightText}>";
+        // Max 4 variants supported by runtime.
+        if (variants.Count > 4)
+        {
+            var (line, col) = ComputeLineCol(tokens, tokens[end].SpanStart);
             return new TypeParse
             {
-                End = right.End,
-                Text = unionText,
+                End = end,
+                Text = "",
                 HasUnion = true,
+                Error = new Diagnostic(
+                    DiagnosticCode.UT001, filePath, line, col,
+                    $"{DiagnosticCode.Describe(DiagnosticCode.UT001)}{Environment.NewLine}{ReconstructTokenText(tokens, start, end)}"),
             };
         }
 
-        return left;
+        // Check for identical members.
+        for (int a = 0; a < variants.Count; a++)
+        {
+            for (int b = a + 1; b < variants.Count; b++)
+            {
+                if (Normalize(variants[a]) == Normalize(variants[b]))
+                {
+                    var (line, col) = ComputeLineCol(tokens, tokens[j].SpanStart);
+                    return new TypeParse
+                    {
+                        End = end,
+                        Text = "",
+                        HasUnion = true,
+                        Error = new Diagnostic(
+                            DiagnosticCode.UT004, filePath, line, col,
+                            $"{DiagnosticCode.Describe(DiagnosticCode.UT004)}: {variants[a]} | {variants[b]}"),
+                    };
+                }
+            }
+        }
+
+        string unionText = $"{unionTypeName}<{string.Join(", ", variants)}>";
+        return new TypeParse
+        {
+            End = end,
+            Text = unionText,
+            HasUnion = true,
+        };
     }
 
     private static TypeParse ParseType(IReadOnlyList<SyntaxToken> tokens, int start, string filePath, string unionTypeName)

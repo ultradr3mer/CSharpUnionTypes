@@ -19,6 +19,9 @@
     <ProjectReference Include="..\UnionTypes.CodeFixes\UnionTypes.CodeFixes.csproj"
                       OutputItemType="Analyzer"
                       ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\UnionTypes.Generators\UnionTypes.Generators.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <!-- Union-syntax source lives in Source/. The MSBuild target runs the

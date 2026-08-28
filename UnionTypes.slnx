@@ -2,6 +2,8 @@
   <Project Path="BasicSample/BasicSample.csproj" />
   <Project Path="UnionTypes.CodeFixes.Tests/UnionTypes.CodeFixes.Tests.csproj" />
   <Project Path="UnionTypes.CodeFixes/UnionTypes.CodeFixes.csproj" />
+  <Project Path="UnionTypes.Generators.Tests/UnionTypes.Generators.Tests.csproj" />
+  <Project Path="UnionTypes.Generators/UnionTypes.Generators.csproj" />
   <Project Path="UnionTypes.Runtime.Tests/UnionTypes.Runtime.Tests.csproj" />
   <Project Path="UnionTypes.Runtime/UnionTypes.Runtime.csproj" />
   <Project Path="UnionTypes.Transpiler.Tests/UnionTypes.Transpiler.Tests.csproj" />
