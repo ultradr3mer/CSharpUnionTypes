@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="BasicSample/BasicSample.csproj" />
+  <Project Path="UnionTypes.Runtime.Tests/UnionTypes.Runtime.Tests.csproj" />
+  <Project Path="UnionTypes.Runtime/UnionTypes.Runtime.csproj" />
+  <Project Path="UnionTypes.Transpiler.Tests/UnionTypes.Transpiler.Tests.csproj" />
+  <Project Path="UnionTypes.Transpiler/UnionTypes.Transpiler.csproj" />
+</Solution>
