@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>true</IsPackable>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <PackageId>UnionTypes</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>UnionTypes</Authors>
+    <Description>Runtime and build-time transpiler for C# union types.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\UnionTypes.Runtime\UnionTypes.Runtime.csproj" ReferenceOutputAssembly="false" PrivateAssets="all" />
+    <ProjectReference Include="..\UnionTypes.Transpiler\UnionTypes.Transpiler.csproj" ReferenceOutputAssembly="false" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\UnionTypes.Runtime\bin\$(Configuration)\net10.0\UnionTypes.Runtime.dll"
+          Pack="true"
+          PackagePath="lib\net10.0" />
+    <None Include="..\UnionTypes.Transpiler\bin\$(Configuration)\net10.0\*"
+          Pack="true"
+          PackagePath="tools\net10.0\any\" />
+    <None Include="buildTransitive\UnionTypes.targets"
+          Pack="true"
+          PackagePath="buildTransitive" />
+  </ItemGroup>
+
+</Project>

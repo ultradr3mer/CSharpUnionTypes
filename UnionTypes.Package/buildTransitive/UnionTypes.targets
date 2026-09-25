@@ -1,0 +1,14 @@
+<Project>
+  <PropertyGroup>
+    <UnionTypesSourceDirectory Condition="'$(UnionTypesSourceDirectory)' == ''">$(MSBuildProjectDirectory)\Source</UnionTypesSourceDirectory>
+    <UnionTypesOutputDirectory Condition="'$(UnionTypesOutputDirectory)' == ''">$(BaseIntermediateOutputPath)UnionTranspiler</UnionTypesOutputDirectory>
+  </PropertyGroup>
+
+  <Target Name="UnionTypes_Transpile" BeforeTargets="CoreCompile" Condition="Exists('$(UnionTypesSourceDirectory)')">
+    <Exec Command="dotnet &quot;$(MSBuildThisFileDirectory)..\tools\net10.0\any\uniontypes-transpiler.dll&quot; --input &quot;$(UnionTypesSourceDirectory)&quot; --output &quot;$(UnionTypesOutputDirectory)&quot;" />
+    <ItemGroup>
+      <Compile Remove="$(UnionTypesSourceDirectory)\**\*.cs" />
+      <Compile Include="$(UnionTypesOutputDirectory)\**\*.cs" />
+    </ItemGroup>
+  </Target>
+</Project>
