@@ -4,6 +4,8 @@ namespace BasicSample;
 
 public static class ExampleFunction
 {
+
+   
 	public static IEnumerable<int> NonZeroEnumerable(IEnumerable<int> | int input)
 	{
 		IEnumerable<int> normalized = input.Match(
@@ -20,6 +22,8 @@ public static class ExampleFunction
 			i => $"int: {i}",
 			b => $"bool: {b}");
 	}
+
+  // but now comment is here
 
 	public static string Describe4(string | int | bool | double input)
 	{

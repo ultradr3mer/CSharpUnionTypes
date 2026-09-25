@@ -1,0 +1,35 @@
+{
+	"$schema": "https://opencode.ai/config.json",
+	"permission": {
+		"bash": {
+			"*": "ask",
+			"npm publish*": "deny",
+			"npm install*": "allow",
+			"npm ci*": "allow",
+			"npm run compile*": "allow",
+			"npm run watch*": "allow",
+			"npm run package*": "allow",
+			"npm version*": "allow",
+			"npx @vscode/vsce*": "allow",
+			"npx -y @vscode/vsce*": "allow",
+			"npx vsce*": "allow",
+			"vsce*": "allow",
+			"code *": "allow",
+			"Get-Command *": "allow",
+			"Get-Module *": "allow",
+			"Get-PSReadLine*": "allow",
+			"Get-ChildItem *": "allow",
+			"Test-Path*": "allow"
+		},
+		"read": {
+			"~/AppData/Roaming/Code/User/**": "allow",
+			"~/AppData/Local/Programs/Microsoft VS Code/**": "allow",
+			"~/.config/opencode/**": "allow"
+		},
+		"external_directory": {
+			"~/AppData/Roaming/Code/User/**": "allow",
+			"~/AppData/Local/Programs/Microsoft VS Code/**": "allow",
+			"~/.config/opencode/**": "allow"
+		}
+	}
+}

@@ -1,0 +1,4 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": ["F:/source/opencode/.opencode/plugins/folder-watch.ts"],
+}
