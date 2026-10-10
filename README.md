@@ -1,5 +1,11 @@
 # CSharpUnionTypes
 
+> **English summary:** An experimental preprocessor/transpiler that adds union type syntax to C#.
+> `string | int value = GetValue();` is rewritten before compilation to
+> `global::UnionTypes.Union<string, int> value = GetValue();`. It runs as a source-to-source
+> transform before `dotnet build`, supports up to four variants, and never modifies your original files.
+> The rest of this README is in German.
+
 Ein experimenteller Preprocessor/Transpiler, der **Union-Type-Syntax** zu C# hinzufügt.
 
 ```csharp
